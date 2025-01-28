@@ -1,21 +1,42 @@
 from rest_framework import status
 from rest_framework.response import Response
 from rest_framework.views import APIView
-from rest_framework.permissions import AllowAny
+from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework_simplejwt.tokens import RefreshToken
 from rest_framework.serializers import ValidationError
 from rest_framework_simplejwt.views import TokenObtainPairView
 from rest_framework import viewsets, filters, status
 from rest_framework.parsers import MultiPartParser, FormParser
-from api.serializers import UtilisateurSerializer, LoginSerializer, RegisterSerializer
-from core.models import Utilisateur
+from django.utils import timezone
+from datetime import timedelta
+from api.serializers import (
+    UtilisateurSerializer, LoginSerializer, RegisterSerializer,
+    CategorieSerializer, ProduitSerializer, VenteSerializer, OffreEmploiSerializer, CandidatureSerializer
+)
+from django_filters.rest_framework import DjangoFilterBackend
+from core.models import *
 from rest_framework import generics
-from rest_framework.decorators import api_view, permission_classes
+from rest_framework.decorators import api_view, permission_classes, action
 from rest_framework.response import Response
 from rest_framework.permissions import AllowAny
 from . import serializers
 from rest_framework.exceptions import ValidationError
+from django.db.models import Q
+from rest_framework.exceptions import NotFound
+from rest_framework.permissions import IsAuthenticated
+from rest_framework.authentication import SessionAuthentication, BasicAuthentication
 
+
+class ProfileView(APIView):
+    permission_classes = [AllowAny]
+
+    def get(self, request, utilisateur_id):
+        try:
+            utilisateur = Utilisateur.objects.get(id=utilisateur_id)
+            serializer = UtilisateurSerializer(utilisateur)
+            return Response(serializer.data)
+        except Utilisateur.DoesNotExist:
+            raise NotFound("Utilisateur non trouvé")
 
 
 class RegisterView(APIView):
@@ -61,7 +82,75 @@ class RegisterView(APIView):
             )
 
 
-        
+@api_view(['GET'])
+@permission_classes([AllowAny])
+def recherche(request):
+    #recupérer les paramètres de recherche
+    emplacement = request.query_params.get('emplacement', '').lower()
+    disponibilite = request.query_params.get('disponibilite', '')  # Ne pas convertir en lower() car sensible à la casse
+    role = request.query_params.get('role', '')
+
+    print(f"Paramètres de recherche reçus: emplacement='{emplacement}', disponibilite='{disponibilite}', role='{role}'")
+
+    #commencer avec tous les utilisateurs
+    queryset = Utilisateur.objects.all()
+    print(f"Nombre total d'utilisateurs avant filtrage: {queryset.count()}")
+
+    # Appliquer les filtres un par un et vérifier les résultats à chaque étape
+    if emplacement:
+        location_filter = (
+            Q(emplacement__icontains=emplacement) |
+            Q(zone_intervention__icontains=emplacement) |
+            Q(zones_de_consultation__icontains=emplacement)
+        )
+        queryset = queryset.filter(location_filter)
+        print(f"Après filtre emplacement: {queryset.count()} utilisateurs")
+        for user in queryset:
+            print(f"- {user.nom} ({user.role}) à {user.emplacement}")
+
+    if disponibilite:
+        print(f"Application du filtre disponibilité: '{disponibilite}'")
+        queryset = queryset.filter(disponibilite=disponibilite)
+        print(f"Après filtre disponibilité: {queryset.count()} utilisateurs")
+        for user in queryset:
+            print(f"- {user.nom} ({user.role}) disponibilité: {user.disponibilite}")
+
+    if role and role.lower() != 'none':
+        print(f"Application du filtre rôle: '{role}'")
+        queryset = queryset.filter(role=role)
+        print(f"Après filtre rôle: {queryset.count()} utilisateurs")
+        for user in queryset:
+            print(f"- {user.nom} (rôle: {user.role})")
+
+    print(f"Nombre final d'utilisateurs trouvés: {queryset.count()}")
+
+    users_data = []
+    for user in queryset:
+        user_data = {
+            'id': user.id,
+            'nom': user.nom,
+            'prenoms': user.prenoms,
+            'role': user.role,
+            'emplacement': user.emplacement,
+            'disponibilite': user.disponibilite
+        }
+
+        if user.role == 'prestataire':
+            user_data.update({
+                'specialites': user.specialites,
+            })
+        elif user.role == 'agriculteur':
+            user_data.update({
+                'type_cultures': user.type_cultures,
+            })
+        elif user.role == 'eleveur':
+            user_data.update({
+                'type_animaux': user.type_animaux,
+            })
+        users_data.append(user_data)
+    
+    return Response({'results': users_data})
+
 
 @api_view(['GET'])
 @permission_classes([AllowAny])
@@ -79,112 +168,58 @@ def list_users(request):
         ]
     })
 
+
+
 class LoginView(APIView):
     permission_classes = (AllowAny,)
-    
-    def post(self, request):        
-        try:
-            print("Données reçues:", request.data)  # Debug log
-            serializer = LoginSerializer(data=request.data)
+
+    def post(self, request):
+        serializer = LoginSerializer(data=request.data)
+        if serializer.is_valid():
+            user = serializer.validated_data['user']
+            refresh = RefreshToken.for_user(user)
             
-            if serializer.is_valid():
-                user = serializer.validated_data['user']
-                refresh = RefreshToken.for_user(user)
-                
-                print("Connexion réussie pour:", user.email)  # Debug log
-                
-                return Response({
-                    'user': {
-                        'nom': user.nom,
-                        'prenoms': user.prenoms,
-                        'email': user.email,
-                        'id': user.id,
-                        'role': user.role
-                    },
-                    'tokens': {
-                        'access': str(refresh.access_token),
-                        'refresh': str(refresh),
-                    }
-                }, status=status.HTTP_200_OK)
-            else:
-                print("Erreurs de validation:", serializer.errors)  # Debug log
-                return Response(
-                    {'error': serializer.errors},
-                    status=status.HTTP_401_UNAUTHORIZED
-                )
+            # Mettre à jour le statut en ligne de l'utilisateur
+            #user.update_online_status(True)
             
-        except ValidationError as e:
-            print("Erreur de validation:", str(e))  # Debug log
-            return Response(
-                {'error': str(e)},
-                status=status.HTTP_401_UNAUTHORIZED
-            )
-        except Exception as e:
-            print("Erreur inattendue:", str(e))  # Debug log
-            return Response(
-                {'error': 'Une erreur inattendue est survenue'},
-                status=status.HTTP_500_INTERNAL_SERVER_ERROR
-            )
+            serializer_user = UtilisateurSerializer(user)
+            return Response({
+                'token': str(refresh.access_token),
+                'user': serializer_user.data
+            })
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
+class LogoutView(APIView):
+    permission_classes = [IsAuthenticated]
 
-# class LoginView(generics.GenericAPIView):
-#     permission_classes = (AllowAny,)
-#     serializer_class = LoginSerializer
+    def post(self, request):
+        # Mettre à jour le statut en ligne de l'utilisateur
+        request.user.update_online_status(False)
+        return Response({"message": "Déconnexion réussie"}, status=status.HTTP_200_OK)
 
-#     def post(self, request):
-#         print("=== Données reçues par le backend ===")
-#         print(request.data)  # Vérifie les données envoyées depuis le frontend
-#         serializer = self.get_serializer(data=request.data)
-#         if serializer.is_valid():
-#             print("=== Données validées ===")
-#             print(serializer.validated_data)
-#         else:
-#             print("=== Erreurs de validation ===")
-#             print(serializer.errors)
-#         return Response(serializer.validated_data)  
-    
+class OnlineUsersView(APIView):
+    permission_classes = [IsAuthenticated]
 
-    # def post(self, request):
-    #     print("=== Données reçues par le backend ===")
-    #     print(request.data)  # Affiche les données envoyées par le frontend
+    def get(self, request):
+        # Considérer un utilisateur comme hors ligne s'il n'a pas eu d'activité depuis 5 minutes
+        timeout = timezone.now() - timedelta(minutes=5)
         
-    #     # serializer = self.get_serializer(data=request.data)
-    #     # try:
-    #     #     serializer.is_valid(raise_exception=True)
-    #     # except serializers.ValidationError as e:
-    #     #     print("=== Erreurs de validation ===")
-    #     #     print(e.detail)
-    #     #     return Response(e.detail, status=status.HTTP_400_BAD_REQUEST)
-    #     # user = serializer.validated_data['user']
-    #     # refresh = RefreshToken.for_user(user)
-    #     # return Response({
-    #     #     'user': UtilisateurSerializer(user).data,
-    #     #     'token': str(refresh.access_token)
-    #     # })
+        # Récupérer tous les utilisateurs en ligne (excluant l'utilisateur actuel)
+        online_users = Utilisateur.objects.filter(
+            Q(is_online=True) & 
+            Q(last_activity__gte=timeout) & 
+            ~Q(id=request.user.id)
+        ).order_by('-last_activity')
 
-    #     serializer = self.get_serializer(data=request.data)
-    #     serializer.is_valid(raise_exception=True)
-    #     user = serializer.validated_data['user']
-    #     refresh = RefreshToken.for_user(user)
-    #     return Response({
-    #     'user': UtilisateurSerializer(user).data,
-    #     'token': str(refresh.access_token)
-    # })
+        serializer = UtilisateurSerializer(online_users, many=True)
+        return Response(serializer.data)
 
+class UpdateActivityView(APIView):
+    permission_classes = [IsAuthenticated]
 
-    # # def post(self, request):
-
-
-    # #     serializer = self.get_serializer(data=request.data)
-    # #     serializer.is_valid(raise_exception=True)
-    # #     user = serializer.validated_data['user']
-    # #     refresh = RefreshToken.for_user(user)
-    # #     return Response({
-    # #         'user': UtilisateurSerializer(user).data,
-    # #         'token': str(refresh.access_token)
-    # #     })
-
-
+    def post(self, request):
+        request.user.update_last_activity()
+        return Response({"message": "Activité mise à jour"}, status=status.HTTP_200_OK)
 
 class UtilisateurViewSet(viewsets.ModelViewSet):
     queryset = Utilisateur.objects.all()
@@ -209,3 +244,118 @@ def get_available_roles(request):
     roles_list = [{'value': role[0], 'label': role[1] } for role in roles]
     print("Rôles disponibles:", roles_list)
     return Response(roles_list)
+
+@api_view(['GET'])
+@permission_classes([AllowAny])
+def get_disponibilite(request):
+    disponibilites = Utilisateur.DISPONIBILITE_CHOICES
+    disponibilite_list = [{'value': disponibilite[0], 'label': disponibilite[1] } for disponibilite in disponibilites]
+    print("Disponibilité disponible:", disponibilite_list)
+    return Response(disponibilite_list)
+
+class CategorieViewSet(viewsets.ReadOnlyModelViewSet):
+    queryset = Categorie.objects.all()
+    serializer_class = CategorieSerializer
+    permission_classes = [AllowAny]
+    authentication_classes = []  # Désactive l'authentification pour cette vue
+
+class ProduitViewSet(viewsets.ModelViewSet):
+    serializer_class = ProduitSerializer
+    permission_classes = [IsAuthenticated]  # Authentification requise pour les produits
+
+    def get_queryset(self):
+        queryset = Produit.objects.all()
+        categorie = self.request.query_params.get('categorie', None)
+        status = self.request.query_params.get('status', None)
+        
+        if categorie:
+            queryset = queryset.filter(categorie=categorie)
+        if status:
+            queryset = queryset.filter(status=status)
+            
+        return queryset
+
+    def perform_create(self, serializer):
+        # Associe automatiquement le vendeur à l'utilisateur connecté
+        serializer.save(vendeur=self.request.user)
+
+    @action(detail = False, methods = ['get'])
+    def mes_produits(self, request):
+        produits = Produit.objects.filter(vendeur=request.user)
+        serializer = self.get_serializer(produits, many=True)
+        return Response(serializer.data)
+
+    @action(detail=True, methods=['post'])
+    def modifier_status(self, request, pk=None):
+        produit = self.get_object()
+        if produit.vendeur != request.user:
+            return Response(
+                {"detail": "Non autorisé"}, 
+                status=status.HTTP_403_FORBIDDEN
+            )
+        nouveau_status = request.data.get('status')
+        if nouveau_status in dict(Produit.STATUS_CHOICES):
+            produit.status = nouveau_status
+            produit.save()
+            return Response({"status": nouveau_status})
+        return Response(
+            {"detail": "Status invalide"}, 
+            status=status.HTTP_400_BAD_REQUEST
+        )
+
+class VenteViewSet(viewsets.ModelViewSet):
+    serializer_class = VenteSerializer
+    permission_classes = [AllowAny]
+
+    def get_queryset(self):
+        return Vente.objects.all()
+
+    @action(detail=True, methods=['post'])
+    def confirmer(self, request, pk=None):
+        vente = self.get_object()
+        vente.confirmer_vente()
+        return Response({'status': 'vente confirmée'})
+
+    @action(detail=True, methods=['post'])
+    def annuler(self, request, pk=None):
+        vente = self.get_object()
+        vente.annuler_vente()
+        return Response({'status': 'vente annulée'})
+
+# Nouvelles vues pour gérer l'état de connexion
+class ConnectionStateView(APIView):
+    permission_classes = [AllowAny]
+
+    def post(self, request, utilisateur_id):
+        try:
+            utilisateur = Utilisateur.objects.get(id=utilisateur_id)
+            utilisateur.is_connected = True
+            utilisateur.save()
+            return Response({'status': 'success', 'message': 'État de connexion mis à jour'})
+        except Utilisateur.DoesNotExist:
+            raise NotFound("Utilisateur non trouvé")
+
+class ConnectionStatesView(APIView):
+    permission_classes = [AllowAny]
+
+    def get(self, request):
+        utilisateurs = Utilisateur.objects.all()
+        connection_states = {user.id: user.is_connected for user in utilisateurs}
+        return Response(connection_states)
+
+
+
+class OffreEmploiViewSet(viewsets.ModelViewSet):
+    queryset = OffreEmploi.objects.all()
+    serializer_class = OffreEmploiSerializer
+    filter_backends = [DjangoFilterBackend, filters.SearchFilter]
+    filterset_fields = ['region', 'type_emploi']
+    search_fields = ['titre', 'description', 'competences_requises']
+
+class CandidatureViewSet(viewsets.ModelViewSet):
+    serializer_class = CandidatureSerializer
+
+    def get_queryset(self):
+        if self.request.user.role == 'AGRICULTEUR':
+            return Candidature.objects.filter(offre__employeur=self.request.user)
+        return Candidature.objects.filter(candidat=self.request.user)

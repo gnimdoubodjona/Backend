@@ -1,4 +1,5 @@
 from django.db import models
+from django.contrib.auth import get_user_model
 from django.contrib.auth.models import AbstractUser, BaseUserManager, Group, Permission
 
 class UtilisateurManager(BaseUserManager):
@@ -26,6 +27,10 @@ class Utilisateur(AbstractUser):
         ('autre', 'Autre'),
     ]
     
+    DISPONIBILITE_CHOICES = [
+        ('Disponible', 'Disponible'),
+        ('Indisponible', 'Indisponible'),
+    ]
 
     username = None  # Désactiver le champ username
     email = models.EmailField(unique=True)
@@ -33,8 +38,9 @@ class Utilisateur(AbstractUser):
     nom = models.CharField(max_length=150)
     emplacement = models.CharField(max_length=100, null=True, blank=True)
     role = models.CharField(max_length=20, choices=ROLE_CHOICES, default='autre')
+    disponibilite = models.CharField(max_length=20, choices=DISPONIBILITE_CHOICES, default='Disponible')
     bio = models.CharField(max_length=400, null=True, blank=True)
-
+    is_connected = models.BooleanField(default=False)  # Nouveau champ pour suivre l'état de connexion
 
     #champs pour les agriculteurs
     type_cultures = models.JSONField(null=True, blank= True)
@@ -58,8 +64,6 @@ class Utilisateur(AbstractUser):
 
     photo_de_profile = models.ImageField(upload_to='profile_photos/', null=True, blank=True)
     numero_telephone = models.CharField(max_length=20, null=True, blank=True)
-    #disponibilite = models.BooleanField(default=True)
-    disponibilite = models.CharField(max_length=20, null=True, blank=True)
 
     groups = models.ManyToManyField(Group, related_name='utilisateurs')
 
@@ -78,4 +82,127 @@ class Utilisateur(AbstractUser):
 
     def __str__(self):
         return self.email
-        
+
+
+class Categorie(models.Model):
+    nom_categorie= models.CharField(max_length=100)
+    description = models.TextField(blank=True)
+
+    def __str__(self):
+        return f'{self.nom_categorie}'
+
+
+class Produit(models.Model):
+    STATUS_CHOICES = [
+        ('disponible', 'Disponible'),
+        ('vendu', 'Vendu'),
+        ('reserve', 'Réservé'),
+    ]
+
+    nom_produit = models.CharField(max_length=100)
+    prix = models.FloatField()
+    quantite = models.PositiveIntegerField()
+    categorie = models.ForeignKey(Categorie, on_delete=models.CASCADE, related_name='produits')
+    description = models.TextField(blank=True)
+    vendeur = models.ForeignKey(get_user_model(), on_delete=models.CASCADE,related_name='produits_en_vente')
+    date_creation = models.DateField(auto_now_add=True)
+    date_modification = models.DateTimeField(auto_now=True)
+    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='disponible')
+    photo = models.ImageField(upload_to='produits/', blank=True, null=True)
+
+    def __str__(self):
+        return f'{self.nom_produit} '
+    
+    def ajuster_stock(self, quantite, operation ='ajouter'):
+        if operation=='ajouter':
+            self.quantite +=quantite
+        elif operation == 'reduire':
+            if self.quantite >= quantite:
+                self.quantite -=quantite
+            else:
+                print("Stock insuffisant")
+        self.save()
+        return self.quantite
+
+
+
+class Agriculteur(models.Model):
+    produits = models.ManyToManyField(Produit, related_name='agriculteurs')
+    utilisateur = models.ForeignKey(Utilisateur, on_delete=models.CASCADE, related_name='agriculteur')
+    
+    groupe = models.ManyToManyField(Group, related_name='agriculteurs')
+    permissions = models.ManyToManyField(Permission, related_name='agriculteur_permissions')
+
+
+class Vente(models.Model):
+    STATUS_CHOICES = [
+        ('en_attente', 'En attente'),
+        ('confirmee', 'Confirmée'),
+        ('annulee', 'Annulée')
+    ]
+    produit = models.ForeignKey(Produit, on_delete=models.CASCADE)
+    acheteur = models.ForeignKey(get_user_model(), on_delete=models.CASCADE, related_name='achats')
+    vendeur = models.ForeignKey(get_user_model(), on_delete=models.CASCADE, related_name='ventes')
+    date = models.DateField()
+    quantite = models.PositiveIntegerField()
+    prix_unitaire = models.DecimalField(max_digits=10, decimal_places=2)
+    date_vente = models.DateTimeField(auto_now_add=True)
+    status = models.CharField(max_length=20, choices=STATUS_CHOICES,default='en_attente')
+    prix_total = models.FloatField()
+
+    def save(self, *args, **kwargs):
+        if not self.prix_total:
+            self.prix_total = self.quantite * self.prix_unitaire
+        super().save(*args, **kwargs)
+    
+    def confirmer_vente(self):
+        if self.status == 'en_attente':
+            self.status = 'confirmee'
+            self.produit.ajuster_stock(self.quantite, 'reduire')
+            self.save()
+
+    def annuler_vente(self):
+        if self.status == 'en_attente':
+            self.status = 'annulee'
+            self.save()
+
+    def __str__(self):
+        return f'{self.produit.nom_produit} - {self.date} - {self.quantite} - {self.prix_total}'
+
+
+
+
+class OffreEmploi(models.Model):
+    TYPES_EMPLOI = [
+        ('PERMANENT', 'Emploi Permanent'),
+        ('SAISONNIER', 'Emploi Saisonnier'),
+        ('STAGE', 'Stage'),
+    ]
+    
+    titre = models.CharField(max_length=200)
+    description = models.TextField()
+    type_emploi = models.CharField(max_length=20, choices=TYPES_EMPLOI)
+    region = models.CharField(max_length=100)
+    competences_requises = models.TextField()
+    salaire = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True)
+    date_publication = models.DateTimeField(auto_now_add=True)
+    date_expiration = models.DateField()
+    employeur = models.ForeignKey('Agriculteur', on_delete=models.CASCADE)
+    est_active = models.BooleanField(default=True)
+
+class Candidature(models.Model):
+    STATUT_CHOICES = [
+        ('NOUVEAU', 'Nouvelle candidature'),
+        ('EN_COURS', 'En cours de traitement'),
+        ('ENTRETIEN', 'Entretien programmé'),
+        ('ACCEPTE', 'Acceptée'),
+        ('REFUSE', 'Refusée'),
+    ]
+    
+    offre = models.ForeignKey(OffreEmploi, on_delete=models.CASCADE)
+    candidat = models.ForeignKey('Utilisateur', on_delete=models.CASCADE)
+    date_candidature = models.DateTimeField(auto_now_add=True)
+    cv = models.FileField(upload_to='cvs/')
+    lettre_motivation = models.TextField()
+    statut = models.CharField(max_length=20, choices=STATUT_CHOICES, default='NOUVEAU')
+    notes = models.TextField(blank=True)

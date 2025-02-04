@@ -206,3 +206,27 @@ class Candidature(models.Model):
     lettre_motivation = models.TextField()
     statut = models.CharField(max_length=20, choices=STATUT_CHOICES, default='NOUVEAU')
     notes = models.TextField(blank=True)
+
+
+#pour la gestion du forum
+class CategorieDiscussion(models.Model):
+    nom = models.CharField(max_length=100)
+    description = models.TextField()
+
+    def __str__(self):
+        return self.nom
+
+class Sujet(models.Model):
+    titre = models.CharField(max_length=200)
+    categorie = models.ForeignKey(CategorieDiscussion, related_name='sujets', on_delete=models.CASCADE)
+    auteur = models.ForeignKey(Utilisateur, on_delete=models.CASCADE)
+    date_creation = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        return self.titre
+
+class Message(models.Model):
+    contenu = models.TextField()
+    auteur = models.ForeignKey(Utilisateur, on_delete=models.CASCADE)
+    sujet = models.ForeignKey(Sujet, related_name='messages', on_delete=models.CASCADE)
+    date_publication = models.DateTimeField(auto_now_add=True)

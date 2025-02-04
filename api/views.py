@@ -11,7 +11,7 @@ from django.utils import timezone
 from datetime import timedelta
 from api.serializers import (
     UtilisateurSerializer, LoginSerializer, RegisterSerializer,
-    CategorieSerializer, ProduitSerializer, VenteSerializer, OffreEmploiSerializer, CandidatureSerializer
+    CategorieSerializer, ProduitSerializer, VenteSerializer, OffreEmploiSerializer, CandidatureSerializer, CategorieDiscussionSerializer, SujetSerializer, MessageSerializer , 
 )
 from django_filters.rest_framework import DjangoFilterBackend
 from core.models import *
@@ -359,3 +359,26 @@ class CandidatureViewSet(viewsets.ModelViewSet):
         if self.request.user.role == 'AGRICULTEUR':
             return Candidature.objects.filter(offre__employeur=self.request.user)
         return Candidature.objects.filter(candidat=self.request.user)
+
+
+#pour la gestion des discussion
+class CategorieDiscussionViewSet(viewsets.ModelViewSet):
+    queryset = CategorieDiscussion.objects.all()
+    serializer_class = CategorieDiscussionSerializer
+    permission_classes = [IsAuthenticated]
+
+class SujetViewSet(viewsets.ModelViewSet):
+    queryset = Sujet.objects.all()
+    serializer_class = SujetSerializer
+    permission_classes = [IsAuthenticated]
+
+    def perform_create(self, serializer):
+        serializer.save(auteur=self.request.user)
+
+class MessageViewSet(viewsets.ModelViewSet):
+    queryset = Message.objects.all()
+    serializer_class = MessageSerializer
+    permission_classes = [IsAuthenticated]
+
+    def perform_create(self, serializer):
+        serializer.save(auteur=self.request.user)

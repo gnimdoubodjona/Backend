@@ -232,3 +232,24 @@ class CandidatureSerializer(serializers.ModelSerializer):
     class Meta:
         model = Candidature
         fields = '_all_'
+
+
+#pour forum
+class CategorieDiscussionSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = CategorieDiscussion
+        fields = '__all__'
+
+class SujetSerializer(serializers.ModelSerializer):
+    auteur = serializers.ReadOnlyField(source='auteur.username')
+
+    class Meta:
+        model = Sujet
+        fields = '__all__'
+
+class MessageSerializer(serializers.ModelSerializer):
+    auteur = serializers.ReadOnlyField(source='auteur.username')
+
+    class Meta:
+        model = Message
+        fields = '__all__'

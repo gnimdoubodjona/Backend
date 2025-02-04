@@ -3,18 +3,23 @@ from rest_framework.routers import DefaultRouter
 from django.conf.urls.static import static
 from rest_framework_simplejwt.views import TokenRefreshView
 from Backend import settings
-from api.views import (
-    RegisterView, LoginView, LogoutView, ProfileView,
-    UtilisateurViewSet, CategorieViewSet, ProduitViewSet, VenteViewSet,
-    OnlineUsersView, UpdateActivityView, ConnectionStateView, ConnectionStatesView,CandidatureViewSet, OffreEmploiViewSet,
-    get_available_roles, get_disponibilite, list_users, recherche
-)
+from api.views import *
+# from api.views import (
+#     RegisterView, LoginView, LogoutView, ProfileView,
+#     UtilisateurViewSet, CategorieViewSet, ProduitViewSet, VenteViewSet,
+#     OnlineUsersView, UpdateActivityView, ConnectionStateView, ConnectionStatesView,CandidatureViewSet, OffreEmploiViewSet,
+#     get_available_roles, get_disponibilite, list_users, recherche
+# )
 
 router = DefaultRouter()
 router.register(r'utilisateurs', UtilisateurViewSet)
 router.register(r'categories', CategorieViewSet)
 router.register(r'produits', ProduitViewSet, basename='produit')
 router.register(r'ventes', VenteViewSet, basename='vente')
+
+router.register(r'categorie_discussions', CategorieDiscussionViewSet)
+router.register(r'sujets', SujetViewSet)
+router.register(r'messages', MessageViewSet)
 
 urlpatterns = [
     path('', include(router.urls)),

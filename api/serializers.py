@@ -167,7 +167,7 @@ class CategorieSerializer(serializers.ModelSerializer):
     
     class Meta:
         model = Categorie
-        fields = ['id', 'nom_categorie', 'description', 'nombre_produits']
+        fields = ['id', 'nom_categorie', 'description', 'nombre_produits', 'unitee']
         
     def get_nombre_produits(self, obj):
         return obj.produits.count()

@@ -87,6 +87,7 @@ class Utilisateur(AbstractUser):
 class Categorie(models.Model):
     nom_categorie= models.CharField(max_length=100)
     description = models.TextField(blank=True)
+    unitee = models.CharField(max_length=60, blank=True)
 
     def __str__(self):
         return f'{self.nom_categorie}'

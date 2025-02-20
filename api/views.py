@@ -279,11 +279,18 @@ class ProduitViewSet(viewsets.ModelViewSet):
         # Associe automatiquement le vendeur à l'utilisateur connecté
         serializer.save(vendeur=self.request.user)
 
-    @action(detail = False, methods = ['get'])
+    @action(detail=False, methods=['get'], url_path='mes-produits')
     def mes_produits(self, request):
-        produits = Produit.objects.filter(vendeur=request.user)
-        serializer = self.get_serializer(produits, many=True)
-        return Response(serializer.data)
+        try:
+            produits = Produit.objects.filter(vendeur=request.user)
+            serializer = self.get_serializer(produits, many=True)
+            return Response(serializer.data)
+        except Exception as e:
+            print(f"Erreur dans mes_produits: {str(e)}")
+            return Response(
+                {"detail": "Erreur lors de la récupération des produits"},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
 
     @action(detail=True, methods=['post'])
     def modifier_status(self, request, pk=None):
@@ -382,3 +389,35 @@ class MessageViewSet(viewsets.ModelViewSet):
 
     def perform_create(self, serializer):
         serializer.save(auteur=self.request.user)
+
+
+from rest_framework import status
+from rest_framework.decorators import api_view, permission_classes
+from rest_framework.response import Response
+from rest_framework.permissions import IsAuthenticated
+from core.models import Produit
+from .serializers import ProduitSerializer
+
+@api_view(['GET'])
+def liste_produits(request):
+    """
+    Récupère la liste de tous les produits disponibles.
+    """
+    try:
+        # Récupérer tous les produits
+        produits = Produit.objects.all().order_by('-date_creation')
+        
+        # Sérialiser les données
+        serializer = ProduitSerializer(produits, many=True)
+        
+        return Response({
+            'status': 'success',
+            'message': 'Liste des produits récupérée avec succès',
+            'data': serializer.data
+        }, status=status.HTTP_200_OK)
+        
+    except Exception as e:
+        return Response({
+            'status': 'error',
+            'message': str(e)
+        }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)

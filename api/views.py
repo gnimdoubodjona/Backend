@@ -9,10 +9,7 @@ from rest_framework import viewsets, filters, status
 from rest_framework.parsers import MultiPartParser, FormParser
 from django.utils import timezone
 from datetime import timedelta
-from api.serializers import (
-    UtilisateurSerializer, LoginSerializer, RegisterSerializer,
-    CategorieSerializer, ProduitSerializer, VenteSerializer, OffreEmploiSerializer, CandidatureSerializer, CategorieDiscussionSerializer, SujetSerializer, MessageSerializer , 
-)
+from api.serializers import *
 from django_filters.rest_framework import DjangoFilterBackend
 from core.models import *
 from rest_framework import generics
@@ -261,7 +258,18 @@ class CategorieViewSet(viewsets.ReadOnlyModelViewSet):
 
 class ProduitViewSet(viewsets.ModelViewSet):
     serializer_class = ProduitSerializer
-    permission_classes = [IsAuthenticated]  # Authentification requise pour les produits
+    permission_classes = [AllowAny]  # Permet l'accès public
+    
+    def get_permissions(self):
+        """
+        Permet l'accès public pour list et retrieve,
+        mais requiert l'authentification pour les autres actions
+        """
+        if self.action in ['list', 'retrieve']:
+            permission_classes = [AllowAny]
+        else:
+            permission_classes = [IsAuthenticated]
+        return [permission() for permission in permission_classes]
 
     def get_queryset(self):
         queryset = Produit.objects.all()
@@ -421,3 +429,57 @@ def liste_produits(request):
             'status': 'error',
             'message': str(e)
         }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+
+class CartViewSet(viewsets.ModelViewSet):
+    serializer_class = CartSerializer
+    permission_classes = [IsAuthenticated]
+
+    def get_queryset(self):
+        return Cart.objects.filter(user=self.request.user)
+
+    def perform_create(self, serializer):
+        serializer.save(user=self.request.user)
+
+class CartItemViewSet(viewsets.ModelViewSet):
+    serializer_class = CartItemSerializer
+    permission_classes = [IsAuthenticated]
+
+    def get_queryset(self):
+        return CartItem.objects.filter(cart__user=self.request.user)
+
+    def perform_create(self, serializer):
+        cart, _ = Cart.objects.get_or_create(user=self.request.user)
+        serializer.save(cart=cart)
+
+    def create(self, request, *args, **kwargs):
+        cart, _ = Cart.objects.get_or_create(user=request.user)
+        produit_id = request.data.get('produit_id')
+        quantity = int(request.data.get('quantity', 1))
+
+        try:
+            produit = Produit.objects.get(id=produit_id)
+            if produit.quantite < quantity:
+                return Response(
+                    {'detail': 'Quantité non disponible'},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+
+            cart_item, created = CartItem.objects.get_or_create(
+                cart=cart,
+                produit=produit,
+                defaults={'quantity': quantity}
+            )
+
+            if not created:
+                cart_item.quantity += quantity
+                cart_item.save()
+
+            serializer = self.get_serializer(cart_item)
+            return Response(serializer.data)
+
+        except Produit.DoesNotExist:
+            return Response(
+                {'detail': 'Produit non trouvé'},
+                status=status.HTTP_404_NOT_FOUND
+            )

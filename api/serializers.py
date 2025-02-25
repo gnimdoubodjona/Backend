@@ -253,3 +253,28 @@ class MessageSerializer(serializers.ModelSerializer):
     class Meta:
         model = Message
         fields = '__all__'
+
+class CartItemSerializer(serializers.ModelSerializer):
+    produit = ProduitSerializer(read_only=True)
+    produit_id = serializers.IntegerField(write_only=True)
+    total = serializers.SerializerMethodField()
+
+    class Meta:
+        model = CartItem
+        fields = ['id', 'cart', 'produit', 'produit_id', 'quantity', 'total', 'added_at']
+        read_only_fields = ['cart', 'added_at']
+
+    def get_total(self, obj):
+        return obj.get_total()
+
+class CartSerializer(serializers.ModelSerializer):
+    items = CartItemSerializer(many=True, read_only=True)
+    total = serializers.SerializerMethodField()
+
+    class Meta:
+        model = Cart
+        fields = ['id', 'user', 'items', 'total', 'created_at', 'updated_at']
+        read_only_fields = ['user', 'created_at', 'updated_at']
+
+    def get_total(self, obj):
+        return obj.get_total()

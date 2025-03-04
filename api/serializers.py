@@ -3,6 +3,10 @@ from core.models import *
 from rest_framework_simplejwt.tokens import RefreshToken
 from django.contrib.auth import authenticate
 from django.contrib.auth import get_user_model
+from django.core.files.base import ContentFile  # Correction de l'import
+import base64
+import uuid
+from django.core.files import File
 
 
 User = get_user_model()
@@ -226,13 +230,59 @@ class VenteSerializer(serializers.ModelSerializer):
 class OffreEmploiSerializer(serializers.ModelSerializer):
     class Meta:
         model = OffreEmploi
-        fields = '_all_'
+        fields = '__all__'
+
+# class CandidatureSerializer(serializers.ModelSerializer):
+#     class Meta:
+#         model = Candidature
+#         fields = '__all__'
+#     cv = serializers.CharField(required=False, allow_blank=True)  # Accepte du base64
+
+
+#     def create(self, validated_data):
+#         cv_base64 = validated_data.pop('cv', None)
+
+#         if cv_base64:
+#             try:
+#                 # Décoder le base64 proprement
+#                 file_data = base64.b64decode(cv_base64)
+                
+#                 # Déterminer l'extension (par défaut PDF)
+#                 file_name = f"cv_{uuid.uuid4()}.pdf"
+                
+#                 # Enregistrer le fichier
+#                 validated_data['cv'] = ContentFile(file_data, name=file_name)
+
+#             except Exception as e:
+#                 raise serializers.ValidationError(f"Erreur décodage fichier : {str(e)}")
+
+#         return super().create(validated_data)
+
 
 class CandidatureSerializer(serializers.ModelSerializer):
     class Meta:
         model = Candidature
-        fields = '_all_'
+        fields = '__all__'
 
+    cv = serializers.CharField(required=True)  # Pour accepter la chaîne base64
+
+    def create(self, validated_data):
+        cv_base64 = validated_data.get('cv')
+        try:
+            # Assurez-vous que c'est une chaîne base64 valide
+            if cv_base64:
+                # Décodage du base64
+                file_data = base64.b64decode(cv_base64)
+                # Création d'un nom de fichier unique
+                file_name = f"cv_{uuid.uuid4()}.pdf"
+                # Création du fichier
+                validated_data['cv'] = ContentFile(file_data, name=file_name)
+            
+            return super().create(validated_data)
+        except Exception as e:
+            raise serializers.ValidationError({
+                'cv': f'Erreur lors du traitement du fichier: {str(e)}'
+            })
 
 #pour forum
 class CategorieDiscussionSerializer(serializers.ModelSerializer):

@@ -22,7 +22,9 @@ from django.db.models import Q
 from rest_framework.exceptions import NotFound
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.authentication import SessionAuthentication, BasicAuthentication
-
+import json
+from django.contrib.auth.decorators import login_required
+from django.views.decorators.csrf import csrf_exempt
 
 class ProfileView(APIView):
     permission_classes = [AllowAny]
@@ -367,13 +369,46 @@ class OffreEmploiViewSet(viewsets.ModelViewSet):
     filterset_fields = ['region', 'type_emploi']
     search_fields = ['titre', 'description', 'competences_requises']
 
+    def create(self, request, *args, **kwargs):
+        print("Headers:", request.headers)  # 🔥 Voir le Content-Type
+        print("Données brutes:", request.body)  # 🔥 Voir ce qui est envoyé
+        try:
+            data_json = json.loads(request.body)
+            print("JSON détecté:", data_json)  # 🔥 Voir si Django reçoit du JSON
+        except json.JSONDecodeError:
+            print("⚠️ Django n'a pas pu parser du JSON ! Il reçoit autre chose.")
+        
+        return super().create(request, *args, **kwargs)
+
 class CandidatureViewSet(viewsets.ModelViewSet):
+    queryset = Candidature.objects.all()
     serializer_class = CandidatureSerializer
 
-    def get_queryset(self):
-        if self.request.user.role == 'AGRICULTEUR':
-            return Candidature.objects.filter(offre__employeur=self.request.user)
-        return Candidature.objects.filter(candidat=self.request.user)
+def create(self, request, *args, **kwargs):
+    print("✅ Requête reçue :", request.data)
+    
+    offre_id = request.data.get('offre_id')
+    
+    # Vérification de l'offre_id
+    if offre_id is None:
+        return Response({'error': 'offre_id est requis'}, status=400)
+    
+    try:
+        # Convertir en entier si ce n'est pas déjà le cas
+        offre_id = int(offre_id)
+    except (ValueError, TypeError):
+        return Response({'error': 'offre_id doit être un nombre valide'}, status=400)
+    
+    # Continuer avec le reste de la logique
+    try:
+        offre = OffreEmploi.objects.get(id=offre_id)
+    except OffreEmploi.DoesNotExist:
+        return Response({'error': 'Offre non trouvée'}, status=404)
+    
+    # Ajouter l'offre aux données
+    request.data['offre'] = offre_id
+    
+    return super().create(request, *args, **kwargs)
 
 
 #pour la gestion des discussion
@@ -483,3 +518,21 @@ class CartItemViewSet(viewsets.ModelViewSet):
                 {'detail': 'Produit non trouvé'},
                 status=status.HTTP_404_NOT_FOUND
             )
+
+
+
+@csrf_exempt  # Si tu utilises des requêtes POST sans token CSRF, sinon à enlever si API REST avec DRF
+def candidature_existe(request):
+    if request.method == "GET":
+        candidat_id = request.user.id  # ID du candidat connecté
+        offre_id = request.GET.get("offre_id")
+
+        if not offre_id:
+            return JsonResponse({"error": "L'offre ID est requis."}, status=400)
+
+        offre = get_object_or_404(Offre, id=offre_id)
+        existe = Candidature.objects.filter(candidat_id=candidat_id, offre=offre).exists()
+        
+        return JsonResponse({"existe": existe})
+    
+    return JsonResponse({"error": "Méthode non autorisée"}, status=405)

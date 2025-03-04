@@ -20,6 +20,12 @@ router.register(r'ventes', VenteViewSet, basename='vente')
 router.register(r'categorie_discussions', CategorieDiscussionViewSet)
 router.register(r'sujets', SujetViewSet)
 router.register(r'messages', MessageViewSet)
+router.register(r'offreEmploi', OffreEmploiViewSet)
+
+
+
+# router.register(r'candidature', CandidatureViewSet, basename = 'candidature')
+router.register(r'candidature', CandidatureViewSet)
 
 router.register(r'cart', CartViewSet, basename='cart')
 router.register(r'cart-items', CartItemViewSet, basename='cart-items')
@@ -34,6 +40,9 @@ urlpatterns = [
         path('roles/', get_available_roles, name='available-roles'),
         path('disponibilite/', get_disponibilite, name='get_disponibilite'),
     ])),
+
+    path("api/candidature/existe/", candidature_existe, name="candidature_existe"),
+
     path('users', list_users, name='list-users'),
     path('recherche', recherche, name='recherche'),
     path('api/utilisateurs/<int:utilisateur_id>/', ProfileView.as_view(), name='ProfileView'),

@@ -201,39 +201,42 @@ class Vente(models.Model):
 
 
 class OffreEmploi(models.Model):
-    TYPES_EMPLOI = [
-        ('PERMANENT', 'Emploi Permanent'),
-        ('SAISONNIER', 'Emploi Saisonnier'),
-        ('STAGE', 'Stage'),
-    ]
-    
+
     titre = models.CharField(max_length=200)
     description = models.TextField()
-    type_emploi = models.CharField(max_length=20, choices=TYPES_EMPLOI)
+    type_emploi = models.CharField(max_length=20)
     region = models.CharField(max_length=100)
     competences_requises = models.TextField()
     salaire = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True)
     date_publication = models.DateTimeField(auto_now_add=True)
     date_expiration = models.DateField()
-    employeur = models.ForeignKey('Agriculteur', on_delete=models.CASCADE)
+    employeur = models.ForeignKey(get_user_model(), on_delete=models.CASCADE)
     est_active = models.BooleanField(default=True)
 
 class Candidature(models.Model):
-    STATUT_CHOICES = [
-        ('NOUVEAU', 'Nouvelle candidature'),
-        ('EN_COURS', 'En cours de traitement'),
-        ('ENTRETIEN', 'Entretien programmé'),
-        ('ACCEPTE', 'Acceptée'),
-        ('REFUSE', 'Refusée'),
-    ]
+    # STATUT_CHOICES = [
+    #     ('NOUVEAU', 'Nouvelle candidature'),
+    #     ('EN_COURS', 'En cours de traitement'),
+    #     ('ENTRETIEN', 'Entretien programmé'),
+    #     ('ACCEPTE', 'Acceptée'),
+    #     ('REFUSE', 'Refusée'),
+    # ]
     
     offre = models.ForeignKey(OffreEmploi, on_delete=models.CASCADE)
     candidat = models.ForeignKey('Utilisateur', on_delete=models.CASCADE)
-    date_candidature = models.DateTimeField(auto_now_add=True)
-    cv = models.FileField(upload_to='cvs/')
+    nom = models.CharField(max_length=100, default='utilisateur0')
+    prenoms = models.CharField(max_length=150, default='utilisateur0')
+    email = models.EmailField(unique=True, default='utilisateur0@gmail.com')
+    adresse = models.TextField(default='Kégué')
+    numero_telephone = models.CharField(max_length=20, default='+228 90001212')  # Ajouter un validateur pour le format
+    # date_candidature = models.DateTimeField(auto_now_add=True)
+    cv = models.FileField(upload_to='cvs/', null=True, blank=True)
     lettre_motivation = models.TextField()
-    statut = models.CharField(max_length=20, choices=STATUT_CHOICES, default='NOUVEAU')
-    notes = models.TextField(blank=True)
+    #statut = models.CharField(max_length=20, choices=STATUT_CHOICES, default='NOUVEAU')
+    # notes = models.TextField(blank=True)
+
+    def __str__(self):
+        return f"Candidature de {self.nom} {self.prenoms} pour {self.offre}"
 
 
 #pour la gestion du forum

@@ -24,8 +24,14 @@ router.register(r'offreEmploi', OffreEmploiViewSet)
 
 
 
-# router.register(r'candidature', CandidatureViewSet, basename = 'candidature')
-router.register(r'candidature', CandidatureViewSet)
+router.register('candidature', CandidatureViewSet, basename='candidature')
+
+# Ajoutez ces prints pour le debug
+print("\nURLs disponibles pour candidature:")
+for url in router.urls:
+    if 'candidature' in str(url.pattern):
+        print(f"- {url.pattern}")
+        
 
 router.register(r'cart', CartViewSet, basename='cart')
 router.register(r'cart-items', CartItemViewSet, basename='cart-items')
@@ -39,9 +45,11 @@ urlpatterns = [
         path('token/refresh/', TokenRefreshView.as_view(), name='token_refresh'),
         path('roles/', get_available_roles, name='available-roles'),
         path('disponibilite/', get_disponibilite, name='get_disponibilite'),
+        #path('api/candidature/verify/<int:offre_id>/', CandidatureViewSet.as_view({'get': 'verify_candidature'})),
+
     ])),
 
-    path("api/candidature/existe/", candidature_existe, name="candidature_existe"),
+    # path("api/candidature/existe/", candidature_existe, name="candidature_existe"),
 
     path('users', list_users, name='list-users'),
     path('recherche', recherche, name='recherche'),

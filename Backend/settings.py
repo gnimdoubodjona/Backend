@@ -34,6 +34,7 @@ INSTALLED_APPS = [
     'corsheaders',
     'rest_framework_simplejwt',
     'django_filters',
+    'drf_yasg',
 ]
 
 AUTH_USER_MODEL = 'core.Utilisateur'

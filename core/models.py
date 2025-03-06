@@ -221,6 +221,8 @@ class Candidature(models.Model):
     #     ('ACCEPTE', 'Acceptée'),
     #     ('REFUSE', 'Refusée'),
     # ]
+
+    
     
     offre = models.ForeignKey(OffreEmploi, on_delete=models.CASCADE)
     candidat = models.ForeignKey('Utilisateur', on_delete=models.CASCADE)
@@ -238,6 +240,9 @@ class Candidature(models.Model):
     def __str__(self):
         return f"Candidature de {self.nom} {self.prenoms} pour {self.offre}"
 
+    class Meta:
+        # Ajouter cette contrainte unique
+        unique_together = ('offre', 'candidat')
 
 #pour la gestion du forum
 class CategorieDiscussion(models.Model):

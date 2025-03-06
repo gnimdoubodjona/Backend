@@ -25,6 +25,21 @@ from rest_framework.authentication import SessionAuthentication, BasicAuthentica
 import json
 from django.contrib.auth.decorators import login_required
 from django.views.decorators.csrf import csrf_exempt
+from rest_framework.decorators import action
+from rest_framework.response import Response
+from django.urls import get_resolver
+from django.urls.resolvers import URLPattern, URLResolver
+
+
+
+def print_urls(urlpatterns, depth=0):
+    for pattern in urlpatterns:
+        if isinstance(pattern, URLPattern):
+            print("  " * depth + str(pattern.pattern))
+        elif isinstance(pattern, URLResolver):
+            print("  " * depth + str(pattern.pattern))
+            print_urls(pattern.url_patterns, depth + 1)
+
 
 class ProfileView(APIView):
     permission_classes = [AllowAny]
@@ -384,31 +399,111 @@ class CandidatureViewSet(viewsets.ModelViewSet):
     queryset = Candidature.objects.all()
     serializer_class = CandidatureSerializer
 
-def create(self, request, *args, **kwargs):
-    print("✅ Requête reçue :", request.data)
-    
-    offre_id = request.data.get('offre_id')
-    
-    # Vérification de l'offre_id
-    if offre_id is None:
-        return Response({'error': 'offre_id est requis'}, status=400)
-    
+    # Dans votre CandidatureViewSet, ajoutez cette méthode
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        print("\nToutes les URLs disponibles:")
+        print_urls(get_resolver().url_patterns)
+
+@action(detail=False, methods=['get'], url_path='by-offre/(?P<offre_id>\d+)')
+def get_candidature_by_offre(self, request, offre_id=None):
     try:
-        # Convertir en entier si ce n'est pas déjà le cas
-        offre_id = int(offre_id)
-    except (ValueError, TypeError):
-        return Response({'error': 'offre_id doit être un nombre valide'}, status=400)
+        candidature = Candidature.objects.get(
+            offre_id=offre_id,
+            candidat=request.user
+        )
+        serializer = self.get_serializer(candidature)
+        return Response(serializer.data)
+    except Candidature.DoesNotExist:
+        return Response(
+            {'detail': 'Candidature non trouvée'}, 
+            status=status.HTTP_404_NOT_FOUND
+        )
+
+
+    @action(detail=False, methods=['GET'], url_path='check_status', url_name='check_status')
+    def check_status(self, request):
+        """
+        Vérifie si une candidature existe pour une offre donnée
+        """
+        print("Méthode check_status appelée")
+        offre_id = request.query_params.get('offre_id')
+        print(f"Vérification pour offre_id: {offre_id}")
+
+        if not offre_id:
+            return Response({'exists': False}, status=status.HTTP_400_BAD_REQUEST)
+
+        try:
+            # Vérification pour un utilisateur authentifié
+            if request.user.is_authenticated:
+                print(f"Vérification pour l'utilisateur authentifié: {request.user}")
+                candidature_exists = Candidature.objects.filter(
+                    offre_id=offre_id,
+                    candidat=request.user
+                ).exists()
+            else:
+                # Vérification par email si non authentifié
+                email = request.session.get('email')
+                print(f"Vérification avec l'email: {email}")
+                candidature_exists = Candidature.objects.filter(
+                    offre_id=offre_id,
+                    email=email
+                ).exists() if email else False
+                print(f"Résultat de la vérification: {candidature_exists}")
+                return Response({'exists': candidature_exists})
+            
+        except Exception as e:
+                print(f"Erreur dans check_status: {str(e)}")
+                return Response(
+                    {'error': str(e)}, 
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+
+
+
+    def create(self, request, *args, **kwargs):
+        # Vérifier si une candidature existe déjà
+        offre_id = request.data.get('offre')
+        candidat_id = request.user.id
+
+        existing_candidature = Candidature.objects.filter(
+            offre_id=offre_id,
+            candidat_id=candidat_id
+        ).exists()
+
+        if existing_candidature:
+            return Response(
+                {'detail': 'Vous avez déjà postulé à cette offre'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        return super().create(request, *args, **kwargs)
+
+# def create(self, request, *args, **kwargs):
+#     print("✅ Requête reçue :", request.data)
     
-    # Continuer avec le reste de la logique
-    try:
-        offre = OffreEmploi.objects.get(id=offre_id)
-    except OffreEmploi.DoesNotExist:
-        return Response({'error': 'Offre non trouvée'}, status=404)
+#     offre_id = request.data.get('offre_id')
     
-    # Ajouter l'offre aux données
-    request.data['offre'] = offre_id
+#     # Vérification de l'offre_id
+#     if offre_id is None:
+#         return Response({'error': 'offre_id est requis'}, status=400)
     
-    return super().create(request, *args, **kwargs)
+#     try:
+#         # Convertir en entier si ce n'est pas déjà le cas
+#         offre_id = int(offre_id)
+#     except (ValueError, TypeError):
+#         return Response({'error': 'offre_id doit être un nombre valide'}, status=400)
+    
+#     # Continuer avec le reste de la logique
+#     try:
+#         offre = OffreEmploi.objects.get(id=offre_id)
+#     except OffreEmploi.DoesNotExist:
+#         return Response({'error': 'Offre non trouvée'}, status=404)
+    
+#     # Ajouter l'offre aux données
+#     request.data['offre'] = offre_id
+    
+    #return super().create(request, *args, **kwargs)
 
 
 #pour la gestion des discussion
@@ -470,8 +565,24 @@ class CartViewSet(viewsets.ModelViewSet):
     serializer_class = CartSerializer
     permission_classes = [IsAuthenticated]
 
+    # def get_queryset(self):
+    #     return Cart.objects.filter(user=self.request.user)
+
+    # def get_queryset(self):
+    #     if not self.request.user.is_authenticated:
+    #         return Cart.objects.none()  # Retourne un queryset vide si l'utilisateur n'est pas connecté
+    #     return Cart.objects.filter(user=self.request.user)
+
     def get_queryset(self):
+        # Ajoutez la logique pour Swagger
+        if getattr(self, 'swagger_fake_view', False):
+            return Cart.objects.none()
+        # Si l'utilisateur n'est pas authentifié, renvoyer un queryset vide
+        if not self.request.user.is_authenticated:
+            return Cart.objects.none()
+        # Sinon, renvoyer les objets du panier pour l'utilisateur authentifié
         return Cart.objects.filter(user=self.request.user)
+
 
     def perform_create(self, serializer):
         serializer.save(user=self.request.user)
@@ -480,8 +591,19 @@ class CartItemViewSet(viewsets.ModelViewSet):
     serializer_class = CartItemSerializer
     permission_classes = [IsAuthenticated]
 
+    # def get_queryset(self):
+    #     return CartItem.objects.filter(cart__user=self.request.user)
+
     def get_queryset(self):
+        if not self.request.user.is_authenticated:
+            return CartItem.objects.none()
         return CartItem.objects.filter(cart__user=self.request.user)
+
+    # def get_queryset(self):
+    #     if not self.request.user.is_authenticated:
+    #         return CartItem.objects.none()
+    #     return CartItem.objects.filter(cart__user=self.request.user)
+
 
     def perform_create(self, serializer):
         cart, _ = Cart.objects.get_or_create(user=self.request.user)
@@ -520,19 +642,3 @@ class CartItemViewSet(viewsets.ModelViewSet):
             )
 
 
-
-@csrf_exempt  # Si tu utilises des requêtes POST sans token CSRF, sinon à enlever si API REST avec DRF
-def candidature_existe(request):
-    if request.method == "GET":
-        candidat_id = request.user.id  # ID du candidat connecté
-        offre_id = request.GET.get("offre_id")
-
-        if not offre_id:
-            return JsonResponse({"error": "L'offre ID est requis."}, status=400)
-
-        offre = get_object_or_404(Offre, id=offre_id)
-        existe = Candidature.objects.filter(candidat_id=candidat_id, offre=offre).exists()
-        
-        return JsonResponse({"existe": existe})
-    
-    return JsonResponse({"error": "Méthode non autorisée"}, status=405)

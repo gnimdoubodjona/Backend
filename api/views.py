@@ -405,20 +405,34 @@ class CandidatureViewSet(viewsets.ModelViewSet):
         print("\nToutes les URLs disponibles:")
         print_urls(get_resolver().url_patterns)
 
-@action(detail=False, methods=['get'], url_path='by-offre/(?P<offre_id>\d+)')
-def get_candidature_by_offre(self, request, offre_id=None):
-    try:
-        candidature = Candidature.objects.get(
-            offre_id=offre_id,
-            candidat=request.user
-        )
-        serializer = self.get_serializer(candidature)
-        return Response(serializer.data)
-    except Candidature.DoesNotExist:
-        return Response(
-            {'detail': 'Candidature non trouvée'}, 
-            status=status.HTTP_404_NOT_FOUND
-        )
+    def retrieve(self, request, *args, **kwargs):
+        # recupérer une candidature spécifique par id
+        try:
+            #recupérer la candidtaure en utilisant l'id
+            candidature = self.get_object() 
+            serializer = self.get_serializer(candidature)
+            return Response(serializer.data)
+        except Candidature.DoesNotExist:
+            return Response(
+                {'detail': 'candidature non trouvé'},
+                status=status.HTTP_404_NOT_FOUND
+            )
+
+
+    @action(detail=False, methods=['get'], url_path='by-offre/(?P<offre_id>\d+)')
+    def get_candidature_by_offre(self, request, offre_id=None):
+        try:
+            candidature = Candidature.objects.get(
+                offre_id=offre_id,
+                candidat=request.user
+            )
+            serializer = self.get_serializer(candidature)
+            return Response(serializer.data)
+        except Candidature.DoesNotExist:
+            return Response(
+                {'detail': 'Candidature non trouvée'}, 
+                status=status.HTTP_404_NOT_FOUND
+            )
 
 
     @action(detail=False, methods=['GET'], url_path='check_status', url_name='check_status')
@@ -431,10 +445,20 @@ def get_candidature_by_offre(self, request, offre_id=None):
         print(f"Vérification pour offre_id: {offre_id}")
 
         if not offre_id:
-            return Response({'exists': False}, status=status.HTTP_400_BAD_REQUEST)
+            return Response({'error': 'offre_id est requis'}, status=status.HTTP_400_BAD_REQUEST)
+
+    # ✅ Convertir `offre_id` en entier pour éviter les erreurs
+        try:
+            offre_id = int(offre_id)
+        except ValueError:
+            return Response({'error': 'offre_id doit être un entier valide'}, status=status.HTTP_400_BAD_REQUEST)
 
         try:
-            # Vérification pour un utilisateur authentifié
+        # Vérification si l'offre existe
+            if not OffreEmploi.objects.filter(id=offre_id).exists():  # Utilisation de OffreEmploi
+                return Response({'error': 'Offre introuvable'}, status=status.HTTP_404_NOT_FOUND)
+
+        # Vérification pour un utilisateur authentifié
             if request.user.is_authenticated:
                 print(f"Vérification pour l'utilisateur authentifié: {request.user}")
                 candidature_exists = Candidature.objects.filter(
@@ -442,23 +466,23 @@ def get_candidature_by_offre(self, request, offre_id=None):
                     candidat=request.user
                 ).exists()
             else:
-                # Vérification par email si non authentifié
+            # Vérification par email si non authentifié
                 email = request.session.get('email')
                 print(f"Vérification avec l'email: {email}")
                 candidature_exists = Candidature.objects.filter(
                     offre_id=offre_id,
                     email=email
                 ).exists() if email else False
-                print(f"Résultat de la vérification: {candidature_exists}")
-                return Response({'exists': candidature_exists})
-            
-        except Exception as e:
-                print(f"Erreur dans check_status: {str(e)}")
-                return Response(
-                    {'error': str(e)}, 
-                    status=status.HTTP_400_BAD_REQUEST
-                )
 
+            print(f"Résultat de la vérification: {candidature_exists}")
+            return Response({'exists': candidature_exists})
+
+        except Exception as e:
+            print(f"Erreur dans check_status: {str(e)}")
+            return Response(
+                {'error': 'Une erreur interne est survenue'},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
 
 
     def create(self, request, *args, **kwargs):

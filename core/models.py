@@ -214,16 +214,6 @@ class OffreEmploi(models.Model):
     est_active = models.BooleanField(default=True)
 
 class Candidature(models.Model):
-    # STATUT_CHOICES = [
-    #     ('NOUVEAU', 'Nouvelle candidature'),
-    #     ('EN_COURS', 'En cours de traitement'),
-    #     ('ENTRETIEN', 'Entretien programmé'),
-    #     ('ACCEPTE', 'Acceptée'),
-    #     ('REFUSE', 'Refusée'),
-    # ]
-
-    
-    
     offre = models.ForeignKey(OffreEmploi, on_delete=models.CASCADE)
     candidat = models.ForeignKey('Utilisateur', on_delete=models.CASCADE)
     nom = models.CharField(max_length=100, default='utilisateur0')

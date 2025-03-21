@@ -402,8 +402,8 @@ class CandidatureViewSet(viewsets.ModelViewSet):
     # Dans votre CandidatureViewSet, ajoutez cette méthode
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        print("\nToutes les URLs disponibles:")
-        print_urls(get_resolver().url_patterns)
+        #print("\nToutes les URLs disponibles:")
+        #print_urls(get_resolver().url_patterns)
 
     def retrieve(self, request, *args, **kwargs):
         # recupérer une candidature spécifique par id
@@ -417,6 +417,7 @@ class CandidatureViewSet(viewsets.ModelViewSet):
                 {'detail': 'candidature non trouvé'},
                 status=status.HTTP_404_NOT_FOUND
             )
+            print("*************************candidature non trouvé")
 
 
     @action(detail=False, methods=['get'], url_path='by-offre/(?P<offre_id>\d+)')
@@ -484,6 +485,26 @@ class CandidatureViewSet(viewsets.ModelViewSet):
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR
             )
 
+    @action(detail=True, methods=['DELETE'], url_path='delete')
+    def delete_candidature(self, request, pk=None):
+        try:
+            candidature = Candidature.objects.get(id=pk, candidat=request.user)
+
+        # ✅ Ne pas supprimer mais marquer comme supprimée
+            candidature.is_deleted = True
+            candidature.save()
+
+            return Response(
+                {'detail': 'Votre candidature a été supprimée. Vous pouvez repostuler.'},
+                status=status.HTTP_200_OK
+            )
+        except Candidature.DoesNotExist:
+            return Response(
+                {'detail': 'Candidature non trouvée'},
+                status=status.HTTP_404_NOT_FOUND
+            )
+
+
 
     def create(self, request, *args, **kwargs):
         # Vérifier si une candidature existe déjà
@@ -492,7 +513,8 @@ class CandidatureViewSet(viewsets.ModelViewSet):
 
         existing_candidature = Candidature.objects.filter(
             offre_id=offre_id,
-            candidat_id=candidat_id
+            candidat_id=candidat_id,
+            is_deleted= False #vérifier uniquement les candidatures actives
         ).exists()
 
         if existing_candidature:

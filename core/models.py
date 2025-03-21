@@ -201,7 +201,6 @@ class Vente(models.Model):
 
 
 class OffreEmploi(models.Model):
-
     titre = models.CharField(max_length=200)
     description = models.TextField()
     type_emploi = models.CharField(max_length=20)
@@ -226,6 +225,8 @@ class Candidature(models.Model):
     lettre_motivation = models.TextField()
     #statut = models.CharField(max_length=20, choices=STATUT_CHOICES, default='NOUVEAU')
     # notes = models.TextField(blank=True)
+    is_deleted = models.BooleanField(default= False)
+
 
     def __str__(self):
         return f"Candidature de {self.nom} {self.prenoms} pour {self.offre}"

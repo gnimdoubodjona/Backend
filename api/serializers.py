@@ -232,31 +232,6 @@ class OffreEmploiSerializer(serializers.ModelSerializer):
         model = OffreEmploi
         fields = '__all__'
 
-# class CandidatureSerializer(serializers.ModelSerializer):
-#     class Meta:
-#         model = Candidature
-#         fields = '__all__'
-#     cv = serializers.CharField(required=False, allow_blank=True)  # Accepte du base64
-
-
-#     def create(self, validated_data):
-#         cv_base64 = validated_data.pop('cv', None)
-
-#         if cv_base64:
-#             try:
-#                 # Décoder le base64 proprement
-#                 file_data = base64.b64decode(cv_base64)
-                
-#                 # Déterminer l'extension (par défaut PDF)
-#                 file_name = f"cv_{uuid.uuid4()}.pdf"
-                
-#                 # Enregistrer le fichier
-#                 validated_data['cv'] = ContentFile(file_data, name=file_name)
-
-#             except Exception as e:
-#                 raise serializers.ValidationError(f"Erreur décodage fichier : {str(e)}")
-
-#         return super().create(validated_data)
 
 
 class CandidatureSerializer(serializers.ModelSerializer):

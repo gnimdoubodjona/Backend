@@ -50,7 +50,9 @@ urlpatterns = [
     ])),
 
     # path("api/candidature/existe/", candidature_existe, name="candidature_existe"),
+    #path('candidature/<int:id>/', CandidatureViewSet.as_view({'get': 'retrieve'}), name='candidature_detail'),
     path('candidature/<int:id>/', CandidatureViewSet.as_view({'get': 'retrieve'}), name='candidature_detail'),
+
 
     path('users', list_users, name='list-users'),
     path('recherche', recherche, name='recherche'),

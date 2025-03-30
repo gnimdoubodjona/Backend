@@ -199,7 +199,6 @@ class Vente(models.Model):
 
 
 
-
 class OffreEmploi(models.Model):
     titre = models.CharField(max_length=200)
     description = models.TextField()
@@ -211,6 +210,7 @@ class OffreEmploi(models.Model):
     date_expiration = models.DateField()
     employeur = models.ForeignKey(get_user_model(), on_delete=models.CASCADE)
     est_active = models.BooleanField(default=True)
+   
 
 class Candidature(models.Model):
     offre = models.ForeignKey(OffreEmploi, on_delete=models.CASCADE)
@@ -234,6 +234,12 @@ class Candidature(models.Model):
     class Meta:
         # Ajouter cette contrainte unique
         unique_together = ('offre', 'candidat')
+
+class Reponse(models.Model):
+    accepter = models.BooleanField()
+    candidature = models.ForeignKey(Candidature, related_name="candidature", on_delete=models.CASCADE)
+    refuser = models.BooleanField()
+    motifs = models.CharField(max_length=100)
 
 #pour la gestion du forum
 class CategorieDiscussion(models.Model):

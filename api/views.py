@@ -395,6 +395,25 @@ class OffreEmploiViewSet(viewsets.ModelViewSet):
         
         return super().create(request, *args, **kwargs)
 
+    # def get_queryset(self):
+    #     #retourne uniquement les offres créees par l'utilisateur online
+    #     return OffreEmploi.objects.filter(employeur = self.request.user)
+
+    def perform_create(self, serializer):
+        #associe automatiquement l'utilisateur online à l'offre créee
+        serializer.save(employeur = self.request.user)
+
+    @action(detail=False, methods=['get'], permission_classes=[IsAuthenticated])
+    def mes_offres(self, request):
+        #recupérer uniquement les offres create par le user online
+        print("✅ Fonction mes_offres appelée par :", request.user)
+        offres = OffreEmploi.objects.filter(employeur=request.user)
+        serializer = self.get_serializer(offres, many = True)
+        return Response(serializer.data) 
+         
+    
+    
+
 class CandidatureViewSet(viewsets.ModelViewSet):
     queryset = Candidature.objects.all()
     serializer_class = CandidatureSerializer
@@ -434,6 +453,19 @@ class CandidatureViewSet(viewsets.ModelViewSet):
                 {'detail': 'Candidature non trouvée'}, 
                 status=status.HTTP_404_NOT_FOUND
             )
+
+    @action(detail=False, methods=['get'], url_path='all-by-offre/(?P<offre_id>\d+)')
+    def get_all_candidatures_by_offre(self, request, offre_id=None):
+        try:
+            candidatures = Candidature.objects.filter(offre_id=offre_id)
+            serializer = self.get_serializer(candidatures, many= True)
+            return Response(serializer.data)
+        except Candidature.DoesNotExist:
+            return Response(
+                {'detail': 'Candidatures non trouvée'}, 
+                status=status.HTTP_404_NOT_FOUND
+            )
+
 
 
     @action(detail=False, methods=['GET'], url_path='check_status', url_name='check_status')
@@ -551,7 +583,12 @@ class CandidatureViewSet(viewsets.ModelViewSet):
     
     #return super().create(request, *args, **kwargs)
 
+class ReponseViewSet(viewsets.ModelViewSet):
+    queryset = Reponse.objects.all()
+    serializer_class  = ReponseSerializer
+    #permission_classes = 
 
+    
 #pour la gestion des discussion
 class CategorieDiscussionViewSet(viewsets.ModelViewSet):
     queryset = CategorieDiscussion.objects.all()

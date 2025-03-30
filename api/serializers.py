@@ -232,7 +232,10 @@ class OffreEmploiSerializer(serializers.ModelSerializer):
         model = OffreEmploi
         fields = '__all__'
 
-
+class ReponseSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Reponse
+        fields = '__all__'
 
 class CandidatureSerializer(serializers.ModelSerializer):
     class Meta:

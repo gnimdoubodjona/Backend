@@ -132,7 +132,11 @@ DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
 CORS_ALLOWED_ORIGINS = [
     "http://localhost:4200",  # URL de votre application Angular
+    "https://agriconnect-eta.vercel.app",
 ]
+
+CORS_ALLOW_CREDENTIALS = True
+
 
 # Configuration JWT
 SIMPLE_JWT = {

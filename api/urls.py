@@ -20,21 +20,22 @@ router.register(r'ventes', VenteViewSet, basename='vente')
 router.register(r'categorie_discussions', CategorieDiscussionViewSet)
 router.register(r'sujets', SujetViewSet)
 router.register(r'messages', MessageViewSet)
-router.register(r'offreEmploi', OffreEmploiViewSet)
+#router.register(r'offreEmploi', OffreEmploiViewSet)
 
 
 
 router.register('candidature', CandidatureViewSet, basename='candidature')
+router.register(r'offreEmploi', OffreEmploiViewSet, basename='offreEmploi')
 
 # # Ajoutez ces prints pour le debug
-# print("\nURLs disponibles pour candidature:")
-# for url in router.urls:
-#     if 'candidature' in str(url.pattern):
-#         print(f"- {url.pattern}")
-        
+print("\nURLs disponibles pour candidature:")
+for url in router.urls:
+    if 'offreEmploi' in str(url.pattern):
+        print(f"- {url.pattern}")
 
 router.register(r'cart', CartViewSet, basename='cart')
 router.register(r'cart-items', CartItemViewSet, basename='cart-items')
+router.register(r'reponse', ReponseViewSet, basename='reponse')
 
 urlpatterns = [
     path('', include(router.urls)),

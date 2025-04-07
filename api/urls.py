@@ -36,6 +36,7 @@ for url in router.urls:
 router.register(r'cart', CartViewSet, basename='cart')
 router.register(r'cart-items', CartItemViewSet, basename='cart-items')
 router.register(r'reponse', ReponseViewSet, basename='reponse')
+router.register(r'notifications', NotificationsViewSet)
 
 urlpatterns = [
     path('', include(router.urls)),

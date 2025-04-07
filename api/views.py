@@ -586,9 +586,33 @@ class CandidatureViewSet(viewsets.ModelViewSet):
 class ReponseViewSet(viewsets.ModelViewSet):
     queryset = Reponse.objects.all()
     serializer_class  = ReponseSerializer
-    #permission_classes = 
 
-    
+    #permission_classes = 
+    def create(self, request, *args, **kwargs):
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception = True)
+        reponse = serializer.save()
+
+        candidature = reponse.candidature_id
+        candidat = candidature.candidat
+        offre_titre = candidature.offre.titre
+
+        #création de la notif
+        Notifications.objects.create(
+            utilisateur = candidat,
+            message=f"Votre candidature à l'offre '{offre_titre}' a été examinée. Une réponse vous a été envoyée."
+        )
+
+        return Response(serializer.data, status=status.HTTP_201_CREATED)
+
+class NotificationsViewSet(viewsets.ModelViewSet):
+    queryset = Notifications.objects.all()
+    serializer_class = NotificationsSerializer
+
+    def get_queryset(self):
+        utilisateur= self.request.user
+        return Notifications.objects.filter(utilisateur = utilisateur).order_by('-date')  
+
 #pour la gestion des discussion
 class CategorieDiscussionViewSet(viewsets.ModelViewSet):
     queryset = CategorieDiscussion.objects.all()

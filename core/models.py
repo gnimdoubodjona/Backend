@@ -236,10 +236,15 @@ class Candidature(models.Model):
         unique_together = ('offre', 'candidat')
 
 class Reponse(models.Model):
-    accepter = models.BooleanField()
-    candidature = models.ForeignKey(Candidature, related_name="candidature", on_delete=models.CASCADE)
-    refuser = models.BooleanField()
+    reponse = models.BooleanField()
+    candidature_id = models.ForeignKey(Candidature, related_name="reponses", on_delete=models.CASCADE)
     motifs = models.CharField(max_length=100)
+
+class Notifications(models.Model):
+    utilisateur=models.ForeignKey(Utilisateur, on_delete=models.CASCADE, related_name='notifications')
+    message = models.TextField()
+    lu = models.BooleanField()
+    date = models.DateTimeField(auto_now_add=True)
 
 #pour la gestion du forum
 class CategorieDiscussion(models.Model):

@@ -41,8 +41,11 @@ AUTH_USER_MODEL = 'core.Utilisateur'
 
 REST_FRAMEWORK = {
     'DEFAULT_AUTHENTICATION_CLASSES': [
- 'rest_framework_simplejwt.authentication.JWTAuthentication',
-    ]
+    'rest_framework_simplejwt.authentication.JWTAuthentication',
+    ],
+
+    'EXCEPTION_HANDLER': 'rest_framework.views.exception_handler',
+    'NON_FIELD_ERRORS_KEY': 'detail',
 }
 
 MIDDLEWARE = [

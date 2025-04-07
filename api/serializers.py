@@ -237,6 +237,11 @@ class ReponseSerializer(serializers.ModelSerializer):
         model = Reponse
         fields = '__all__'
 
+class NotificationsSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Notifications
+        fields = "__all__"
+
 class CandidatureSerializer(serializers.ModelSerializer):
     class Meta:
         model = Candidature

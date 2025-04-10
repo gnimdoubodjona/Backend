@@ -170,17 +170,20 @@ def recherche(request):
 @permission_classes([AllowAny])
 def list_users(request):
     users = Utilisateur.objects.all()
-    return Response({
-        'users': [
-            {
-                'id': user.id,
-                'email': user.email,
-                'nom': user.nom,
-                'prenoms': user.prenoms,
-                'role': user.role
-            } for user in users
-        ]
-    })
+    serializer = UtilisateurSerializer(users, many=True)
+    return Response({'users': serializer.data})
+    # return Response({
+    #     'users': [
+    #         {
+    #             'id': user.id,
+    #             'email': user.email,
+    #             'nom': user.nom,
+    #             'prenoms': user.prenoms,
+    #             'role': user.role,
+    #             'disponibilite': user.disponibilite,
+    #          } for user in users
+    #     ]
+    # })
 
 
 

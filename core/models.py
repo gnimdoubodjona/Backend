@@ -243,7 +243,7 @@ class Reponse(models.Model):
 class Notifications(models.Model):
     utilisateur=models.ForeignKey(Utilisateur, on_delete=models.CASCADE, related_name='notifications')
     message = models.TextField()
-    lu = models.BooleanField()
+    lu = models.BooleanField(default=False)
     date = models.DateTimeField(auto_now_add=True)
 
 #pour la gestion du forum

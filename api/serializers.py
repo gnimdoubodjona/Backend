@@ -232,10 +232,7 @@ class OffreEmploiSerializer(serializers.ModelSerializer):
         model = OffreEmploi
         fields = '__all__'
 
-class ReponseSerializer(serializers.ModelSerializer):
-    class Meta:
-        model = Reponse
-        fields = '__all__'
+
 
 class NotificationsSerializer(serializers.ModelSerializer):
     class Meta:
@@ -243,6 +240,9 @@ class NotificationsSerializer(serializers.ModelSerializer):
         fields = "__all__"
 
 class CandidatureSerializer(serializers.ModelSerializer):
+    #j'ajoute le champs là ici pour aller facilement recupérer les offres des candidatures dans le serializer de reponse tu vois un peu, sa recupère mes champs de la table offre
+    offre = OffreEmploiSerializer()
+
     class Meta:
         model = Candidature
         fields = '__all__'
@@ -266,6 +266,18 @@ class CandidatureSerializer(serializers.ModelSerializer):
             raise serializers.ValidationError({
                 'cv': f'Erreur lors du traitement du fichier: {str(e)}'
             })
+
+
+
+class ReponseSerializer(serializers.ModelSerializer):
+    #j'ajoute ceci ici pour recupérer les champs stockés dans la table de candidature, 
+    candidature_id= CandidatureSerializer()
+    auteur = serializers.StringRelatedField()
+    
+
+    class Meta:
+        model = Reponse
+        fields = '__all__'
 
 #pour forum
 class CategorieDiscussionSerializer(serializers.ModelSerializer):

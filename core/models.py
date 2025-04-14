@@ -239,6 +239,7 @@ class Reponse(models.Model):
     reponse = models.BooleanField()
     candidature_id = models.ForeignKey(Candidature, related_name="reponses", on_delete=models.CASCADE)
     motifs = models.CharField(max_length=100)
+    auteur = models.ForeignKey(Utilisateur, on_delete=models.SET_NULL, null=True, blank=True) 
 
 class Notifications(models.Model):
     utilisateur=models.ForeignKey(Utilisateur, on_delete=models.CASCADE, related_name='notifications')

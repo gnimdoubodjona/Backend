@@ -589,12 +589,25 @@ class CandidatureViewSet(viewsets.ModelViewSet):
 class ReponseViewSet(viewsets.ModelViewSet):
     queryset = Reponse.objects.all()
     serializer_class  = ReponseSerializer
+    permission_classes = [IsAuthenticated]
+
+    #liste des reponses d'un user
+    @action(detail=False, methods=['get'], url_path='mes-reponses')
+    def mes_reponses(self, request):
+        #recupérer uniquement les reponses envoyées par l'utilisateur online
+        utilisateur = request.user
+        print("✅ Fonction mes_reponses appelée par :", utilisateur)
+        reponses = Reponse.objects.filter(candidature_id__candidat=utilisateur)
+        serializer = self.get_serializer(reponses, many = True)
+        return Response(serializer.data)
+
+
 
     #permission_classes = 
     def create(self, request, *args, **kwargs):
         serializer = self.get_serializer(data=request.data)
         serializer.is_valid(raise_exception = True)
-        reponse = serializer.save()
+        reponse = serializer.save(auteur=request.user)
 
         candidature = reponse.candidature_id
         candidat = candidature.candidat

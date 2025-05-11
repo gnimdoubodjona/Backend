@@ -241,11 +241,12 @@ class NotificationsSerializer(serializers.ModelSerializer):
 
 class CandidatureSerializer(serializers.ModelSerializer):
     #j'ajoute le champs là ici pour aller facilement recupérer les offres des candidatures dans le serializer de reponse tu vois un peu, sa recupère mes champs de la table offre
-    offre = OffreEmploiSerializer()
+    offre = serializers.PrimaryKeyRelatedField(queryset=OffreEmploi.objects.all())  # Accepte uniquement l'ID
 
     class Meta:
         model = Candidature
         fields = '__all__'
+
 
     cv = serializers.CharField(required=True)  # Pour accepter la chaîne base64
 

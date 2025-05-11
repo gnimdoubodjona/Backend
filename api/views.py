@@ -424,8 +424,6 @@ class CandidatureViewSet(viewsets.ModelViewSet):
     # Dans votre CandidatureViewSet, ajoutez cette méthode
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        #print("\nToutes les URLs disponibles:")
-        #print_urls(get_resolver().url_patterns)
 
     def retrieve(self, request, *args, **kwargs):
         # recupérer une candidature spécifique par id
@@ -540,8 +538,12 @@ class CandidatureViewSet(viewsets.ModelViewSet):
             )
 
 
-
     def create(self, request, *args, **kwargs):
+        print("valeur de l offre : ", request.data.get('offre'))
+        serializer = self.get_serializer(data=request.data)
+        if not serializer.is_valid():
+            print("Erreur de validation:", serializer.errors)
+            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
         # Vérifier si une candidature existe déjà
         offre_id = request.data.get('offre')
         candidat_id = request.user.id
@@ -557,34 +559,9 @@ class CandidatureViewSet(viewsets.ModelViewSet):
                 {'detail': 'Vous avez déjà postulé à cette offre'},
                 status=status.HTTP_400_BAD_REQUEST
             )
-
+        print("Clés des données reçues :", request.data.keys())
         return super().create(request, *args, **kwargs)
 
-# def create(self, request, *args, **kwargs):
-#     print("✅ Requête reçue :", request.data)
-    
-#     offre_id = request.data.get('offre_id')
-    
-#     # Vérification de l'offre_id
-#     if offre_id is None:
-#         return Response({'error': 'offre_id est requis'}, status=400)
-    
-#     try:
-#         # Convertir en entier si ce n'est pas déjà le cas
-#         offre_id = int(offre_id)
-#     except (ValueError, TypeError):
-#         return Response({'error': 'offre_id doit être un nombre valide'}, status=400)
-    
-#     # Continuer avec le reste de la logique
-#     try:
-#         offre = OffreEmploi.objects.get(id=offre_id)
-#     except OffreEmploi.DoesNotExist:
-#         return Response({'error': 'Offre non trouvée'}, status=404)
-    
-#     # Ajouter l'offre aux données
-#     request.data['offre'] = offre_id
-    
-    #return super().create(request, *args, **kwargs)
 
 class ReponseViewSet(viewsets.ModelViewSet):
     queryset = Reponse.objects.all()

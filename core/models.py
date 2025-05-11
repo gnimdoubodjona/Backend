@@ -213,18 +213,16 @@ class OffreEmploi(models.Model):
    
 
 class Candidature(models.Model):
-    offre = models.ForeignKey(OffreEmploi, on_delete=models.CASCADE)
+    # offre = models.ForeignKey(OffreEmploi, on_delete=models.CASCADE)
+    offre = models.ForeignKey(OffreEmploi, on_delete=models.CASCADE, related_name='candidatures')
     candidat = models.ForeignKey('Utilisateur', on_delete=models.CASCADE)
     nom = models.CharField(max_length=100, default='utilisateur0')
     prenoms = models.CharField(max_length=150, default='utilisateur0')
-    email = models.EmailField(unique=True, default='utilisateur0@gmail.com')
+    email = models.EmailField(default='utilisateur0@gmail.com')
     adresse = models.TextField(default='Kégué')
     numero_telephone = models.CharField(max_length=20, default='+228 90001212')  # Ajouter un validateur pour le format
-    # date_candidature = models.DateTimeField(auto_now_add=True)
     cv = models.FileField(upload_to='cvs/', null=True, blank=True)
     lettre_motivation = models.TextField()
-    #statut = models.CharField(max_length=20, choices=STATUT_CHOICES, default='NOUVEAU')
-    # notes = models.TextField(blank=True)
     is_deleted = models.BooleanField(default= False)
 
 

@@ -398,9 +398,11 @@ class OffreEmploiViewSet(viewsets.ModelViewSet):
         
         return super().create(request, *args, **kwargs)
 
-    # def get_queryset(self):
-    #     #retourne uniquement les offres créees par l'utilisateur online
-    #     return OffreEmploi.objects.filter(employeur = self.request.user)
+    @action(detail=False, methods=['get'], url_path='a_creer_une_offre')
+    def a_creer_une_offre(self, request):
+        user = request.user
+        exists = OffreEmploi.objects.filter(employeur=user).exists()
+        return Response({'exists': exists})
 
     def perform_create(self, serializer):
         #associe automatiquement l'utilisateur online à l'offre créee
@@ -424,6 +426,20 @@ class CandidatureViewSet(viewsets.ModelViewSet):
     # Dans votre CandidatureViewSet, ajoutez cette méthode
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
+    
+    #vérifier si au moins un user à déjà postuler à l'une de mes offres avant d'afficher la page quoi
+    @action(detail=True, methods=['get'], url_path='candidater_offres')
+    def candidater_offres(self, request):
+        user = request.user
+        #recupérer les offres créeés par l'utilisateur online
+        offres = OffreEmploi.objects.filter(employeur=user).values_list('id', flat=True)
+        # Filtrer les candidatures par les offres de l'utilisateur
+        exits = Candidature.objects.filter(
+            offre_id__in=offres,
+            candidat=user,
+            is_deleted=False  # Vérifier uniquement les candidatures actives
+        ).exists()
+        return Response({'exists': exits})
 
     def retrieve(self, request, *args, **kwargs):
         # recupérer une candidature spécifique par id

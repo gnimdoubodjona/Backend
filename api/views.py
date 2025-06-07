@@ -594,17 +594,15 @@ class ReponseViewSet(viewsets.ModelViewSet):
         serializer = self.get_serializer(reponses, many = True)
         return Response(serializer.data)
 
-
-
     #permission_classes = 
     def create(self, request, *args, **kwargs):
         serializer = self.get_serializer(data=request.data)
         serializer.is_valid(raise_exception = True)
         reponse = serializer.save(auteur=request.user)
 
-        candidature = reponse.candidature_id
-        candidat = candidature.candidat
-        offre_titre = candidature.offre.titre
+        candidature_id = reponse.candidature_id
+        candidat = candidature_id.candidat
+        offre_titre = candidature_id.offre.titre
 
         #création de la notif
         Notifications.objects.create(

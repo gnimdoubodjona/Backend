@@ -228,6 +228,8 @@ class VenteSerializer(serializers.ModelSerializer):
 
 
 class OffreEmploiSerializer(serializers.ModelSerializer):
+    
+
     class Meta:
         model = OffreEmploi
         fields = '__all__'
@@ -241,11 +243,17 @@ class NotificationsSerializer(serializers.ModelSerializer):
 
 class CandidatureSerializer(serializers.ModelSerializer):
     #j'ajoute le champs là ici pour aller facilement recupérer les offres des candidatures dans le serializer de reponse tu vois un peu, sa recupère mes champs de la table offre
-    offre = serializers.PrimaryKeyRelatedField(queryset=OffreEmploi.objects.all())  # Accepte uniquement l'ID
+    #offre_id = serializers.PrimaryKeyRelatedField(queryset=OffreEmploi.objects.all())  # Accepte uniquement l'ID
+    
+    offre_id = serializers.PrimaryKeyRelatedField(queryset=OffreEmploi.objects.all(), source='offre')  # 🔁 mappe 'offre_id' à l'attribut 'offre'
+    offre = OffreEmploiSerializer(read_only=True)
 
     class Meta:
         model = Candidature
-        fields = '__all__'
+        fields = [
+            'id', 'offre_id', 'offre', 'candidat', 'adresse', 
+             'cv', 'nom', 'prenoms', 'email', 'numero_telephone', 'lettre_motivation',
+        ]
 
 
     cv = serializers.CharField(required=True)  # Pour accepter la chaîne base64
@@ -271,8 +279,11 @@ class CandidatureSerializer(serializers.ModelSerializer):
 
 
 class ReponseSerializer(serializers.ModelSerializer):
-    #j'ajoute ceci ici pour recupérer les champs stockés dans la table de candidature, 
-    candidature_id= CandidatureSerializer()
+    #pour que le serializer puisse accepter l'ID de la candidature
+    candidature_id = serializers.PrimaryKeyRelatedField(queryset=Candidature.objects.all())  # Accepte uniquement l'ID
+    #offre_id = serializers.PrimaryKeyRelatedField(queryset=OffreEmploi.objects.all(), source='offre')  # 🔁 mappe 'offre_id' à l'attribut 'offre'
+    candidature_id_details = CandidatureSerializer(source='candidature_id', read_only=True) 
+    #candidature_id = CandidatureSerializer(read_only=True)
     auteur = serializers.StringRelatedField()
     
 
